@@ -1,0 +1,69 @@
+.box {
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.hit,
+.miss {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+}
+
+.hit {
+  color: var(--blue-side);
+  background: color-mix(in srgb, var(--blue-side) 15%, transparent);
+}
+
+.miss {
+  color: var(--lose);
+  background: var(--surface-hover);
+}
+
+.labels {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
+.fav {
+  color: var(--accent);
+}
+
+.bar {
+  display: flex;
+  height: 10px;
+  border-radius: 5px;
+  overflow: hidden;
+  background: var(--surface-hover);
+}
+
+.team1 {
+  background: var(--accent);
+}
+
+.team2 {
+  flex: 1;
+  background: color-mix(in srgb, var(--text-muted) 40%, transparent);
+}
+
+.note {
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--text-muted);
+}

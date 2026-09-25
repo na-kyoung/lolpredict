@@ -1,0 +1,71 @@
+/* 공통 색상·간격 (다크 테마 기본, 밝은 테마도 지원) */
+:root {
+  --bg: #0b0e14;
+  --surface: #151a23;
+  --surface-hover: #1c2330;
+  --border: #262e3d;
+  --text: #e8ecf3;
+  --text-muted: #8b95a7;
+  --accent: #c8aa6e;          /* 롤 골드 */
+  --blue-side: #4a90e2;
+  --red-side: #e5534b;
+  --win: #e8ecf3;
+  --lose: #6b7385;
+  --radius: 12px;
+  --gutter: 16px;
+  --max-width: 1080px;
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f5f6f8;
+    --surface: #ffffff;
+    --surface-hover: #f0f2f5;
+    --border: #e1e5eb;
+    --text: #151a23;
+    --text-muted: #5f6878;
+    --accent: #a07d35;
+    --win: #151a23;
+    --lose: #9aa2b1;
+    color-scheme: light;
+  }
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Pretendard', 'Apple SD Gothic Neo', 'Malgun Gothic', system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+img {
+  max-width: 100%;
+}
+
+/* 페이지 본문 공통 폭 */
+.container {
+  width: 100%;
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding-inline: var(--gutter);
+}

@@ -1,0 +1,141 @@
+.board {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-left: 4px solid;
+  border-bottom: 1px solid var(--border);
+}
+
+.head.blue {
+  border-left-color: var(--blue-side);
+}
+
+.head.red {
+  border-left-color: var(--red-side);
+}
+
+.sideLabel {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.win,
+.lose {
+  margin-left: auto;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.win {
+  color: var(--accent);
+}
+
+.lose {
+  color: var(--lose);
+}
+
+/* 좁은 화면에서는 표만 가로 스크롤 */
+.scroll {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  min-width: 560px;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.table th {
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-align: right;
+}
+
+.table td {
+  padding: 8px 12px;
+  border-top: 1px solid var(--border);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.table .playerCol {
+  text-align: left;
+  width: 38%;
+}
+
+.player {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.playerText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.playerLink {
+  font-weight: 700;
+}
+
+.playerLink:hover {
+  color: var(--accent);
+}
+
+.champLink:hover {
+  color: var(--accent);
+}
+
+.playerText span {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.kda em {
+  font-style: normal;
+  color: var(--red-side);
+}
+
+.damageCol {
+  width: 26%;
+}
+
+.damage {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.bar {
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--surface-hover);
+  overflow: hidden;
+}
+
+.fill {
+  height: 100%;
+  border-radius: 3px;
+}
+
+.fill.blue {
+  background: var(--blue-side);
+}
+
+.fill.red {
+  background: var(--red-side);
+}

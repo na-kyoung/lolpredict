@@ -1,0 +1,21 @@
+.icon {
+  flex-shrink: 0;
+  border-radius: 6px;
+  object-fit: cover;
+}
+
+/* 밴한 챔피언: 흑백 + 흐리게 */
+.dimmed {
+  filter: grayscale(1);
+  opacity: 0.6;
+}
+
+.fallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-hover);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+}

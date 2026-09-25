@@ -1,0 +1,95 @@
+.chart {
+  padding: 16px;
+}
+
+.caption {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.blue {
+  color: var(--blue-side);
+}
+
+.red {
+  color: var(--red-side);
+}
+
+.plot {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  gap: 8px;
+}
+
+.yLabels {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  text-align: right;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.svg {
+  width: 100%;
+  height: 180px;
+  display: block;
+}
+
+.zero {
+  stroke: var(--border);
+  stroke-width: 1;
+}
+
+.blueArea {
+  fill: color-mix(in srgb, var(--blue-side) 35%, transparent);
+}
+
+.redArea {
+  fill: color-mix(in srgb, var(--red-side) 35%, transparent);
+}
+
+.line {
+  fill: none;
+  stroke: var(--text);
+  stroke-width: 1.5;
+}
+
+.xLabels {
+  position: relative;
+  height: 18px;
+  margin-top: 6px;
+  margin-left: 64px; /* y 라벨 폭 + 간격 */
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.xLabels span {
+  position: absolute;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+@media (max-width: 767px) {
+  .chart {
+    padding: 12px;
+  }
+
+  .plot {
+    grid-template-columns: 44px 1fr;
+  }
+
+  .xLabels {
+    margin-left: 52px;
+  }
+
+  .svg {
+    height: 140px;
+  }
+}

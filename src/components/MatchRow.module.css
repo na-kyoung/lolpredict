@@ -1,0 +1,142 @@
+.row {
+  display: grid;
+  grid-template-columns: 56px 1fr 88px 1fr 200px;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-top: 1px solid var(--border);
+}
+
+.row:first-child {
+  border-top: none;
+}
+
+.row:hover {
+  background: var(--surface-hover);
+}
+
+.time {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.team {
+  display: flex;
+  align-items: center;
+  flex-direction: row-reverse; /* 오른쪽 팀: 로고 → 이름 */
+  justify-content: flex-end;
+  gap: 10px;
+  min-width: 0;
+  font-weight: 600;
+}
+
+.right {
+  flex-direction: row; /* 왼쪽 팀: 이름 → 로고 (점수 쪽으로 붙음) */
+  justify-content: flex-end;
+}
+
+.name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.short {
+  display: none;
+}
+
+.won {
+  color: var(--win);
+}
+
+.lost {
+  color: var(--lose);
+}
+
+.score {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  font-size: 20px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--lose);
+}
+
+.score i {
+  font-style: normal;
+  color: var(--text-muted);
+}
+
+.winScore {
+  color: var(--accent);
+}
+
+.vs {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.stage {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  color: var(--text-muted);
+  font-size: 13px;
+  text-align: right;
+}
+
+/* AI 경기 전 예측 */
+.pred {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.hit {
+  color: var(--blue-side);
+}
+
+.miss {
+  color: var(--lose);
+}
+
+/* 태블릿: 단계 열을 좁힘 */
+@media (max-width: 1023px) {
+  .row {
+    grid-template-columns: 52px 1fr 80px 1fr 130px;
+  }
+}
+
+/* 모바일: 팀은 약칭으로, 단계는 아래 줄로 */
+@media (max-width: 767px) {
+  .row {
+    grid-template-columns: 44px 1fr 64px 1fr;
+    row-gap: 4px;
+    padding: 12px;
+  }
+
+  .name {
+    display: none;
+  }
+
+  .short {
+    display: inline;
+  }
+
+  .score {
+    font-size: 17px;
+    gap: 6px;
+  }
+
+  .stage {
+    grid-column: 2 / -1;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 2px 8px;
+    text-align: center;
+    font-size: 12px;
+  }
+}

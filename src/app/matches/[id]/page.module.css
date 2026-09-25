@@ -1,0 +1,287 @@
+.page {
+  padding-block: 24px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.back {
+  align-self: flex-start;
+  color: var(--text-muted);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.back:hover {
+  color: var(--accent);
+}
+
+/* 상단: 두 팀과 최종 스코어 */
+.header {
+  padding: 28px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  text-align: center;
+}
+
+.meta {
+  color: var(--text-muted);
+  font-size: 14px;
+  margin-bottom: 20px;
+}
+
+.scoreLine {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 16px;
+}
+
+.bigTeam {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  font-size: 18px;
+  min-width: 0;
+}
+
+.bigTeam b {
+  overflow-wrap: anywhere;
+}
+
+.lost {
+  color: var(--lose);
+}
+
+.bigScore {
+  display: flex;
+  gap: 14px;
+  font-size: 48px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--lose);
+}
+
+.bigScore i {
+  font-style: normal;
+  color: var(--text-muted);
+}
+
+.winScore {
+  color: var(--accent);
+}
+
+.vs {
+  font-size: 28px;
+  color: var(--text-muted);
+}
+
+/* 세트 탭 */
+.gameTabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.gameTab,
+.activeGameTab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 76px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.gameTab small,
+.activeGameTab small {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.gameTab:hover {
+  color: var(--text);
+  background: var(--surface-hover);
+}
+
+.activeGameTab {
+  color: var(--text);
+  background: var(--surface);
+  border-color: var(--accent);
+}
+
+.summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.accent {
+  color: var(--accent);
+}
+
+/* 공통 카드 */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.cardTitle {
+  padding: 12px 16px;
+  font-size: 15px;
+  font-weight: 800;
+  border-bottom: 1px solid var(--border);
+}
+
+.noData,
+.empty {
+  padding: 32px 16px;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.blueText {
+  color: var(--blue-side);
+  font-weight: 800;
+}
+
+.redText {
+  color: var(--red-side);
+  font-weight: 800;
+}
+
+.bold {
+  font-weight: 800;
+  color: var(--text);
+}
+
+/* 팀 기록 비교 막대 */
+.compare {
+  padding: 12px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.compareHead {
+  display: flex;
+  justify-content: space-between;
+}
+
+.compareRow {
+  display: grid;
+  grid-template-columns: 64px 1fr 64px;
+  align-items: center;
+  gap: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
+.compareRow > span:first-child {
+  text-align: right;
+}
+
+.compareBar {
+  position: relative;
+  display: flex;
+  height: 22px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--surface-hover);
+}
+
+.blueBar {
+  background: color-mix(in srgb, var(--blue-side) 55%, transparent);
+}
+
+.redBar {
+  background: color-mix(in srgb, var(--red-side) 55%, transparent);
+}
+
+.compareBar em {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+/* 밴픽 */
+.draft {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  padding: 16px;
+}
+
+.draftTeam {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.draftRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.draftRow em {
+  width: 20px;
+  font-style: normal;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* 스코어보드: PC 는 두 팀 나란히, 좁으면 위아래 */
+.boards {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 767px) {
+  .header {
+    padding: 20px 12px;
+  }
+
+  .bigTeam {
+    font-size: 14px;
+  }
+
+  .bigTeam img,
+  .bigTeam > span {
+    width: 44px !important;
+    height: 44px !important;
+  }
+
+  .bigScore {
+    font-size: 34px;
+    gap: 8px;
+  }
+
+  .draft {
+    grid-template-columns: 1fr;
+  }
+
+  .compareRow {
+    grid-template-columns: 52px 1fr 52px;
+    gap: 8px;
+    font-size: 13px;
+  }
+}

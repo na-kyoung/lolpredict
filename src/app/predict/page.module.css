@@ -1,0 +1,55 @@
+.barCol {
+  width: 160px;
+  min-width: 100px;
+}
+
+.bar {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--surface-hover);
+  overflow: hidden;
+}
+
+.bar div {
+  height: 100%;
+  border-radius: 4px;
+  background: var(--accent);
+}
+
+.player {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.player:hover {
+  color: var(--accent);
+}
+
+.twoCol {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+.about ul {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 16px 16px 32px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.about b {
+  color: var(--text);
+}
+
+@media (max-width: 767px) {
+  .twoCol {
+    grid-template-columns: 1fr;
+  }
+}

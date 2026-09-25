@@ -1,0 +1,149 @@
+/* 통계 페이지 공통 레이아웃 */
+
+.page {
+  padding-block: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.title {
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.desc {
+  margin-top: -12px;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sectionTitle {
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip,
+.activeChip {
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-weight: 600;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.chip:hover {
+  color: var(--text);
+  background: var(--surface-hover);
+}
+
+.activeChip {
+  color: var(--text);
+  background: var(--surface);
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+.empty {
+  padding: 32px 16px;
+  text-align: center;
+  color: var(--text-muted);
+  background: var(--surface);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+}
+
+.back {
+  align-self: flex-start;
+  color: var(--text-muted);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.back:hover {
+  color: var(--accent);
+}
+
+/* 요약 숫자 카드 */
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.card {
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.card span {
+  display: block;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.card b {
+  font-size: 22px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.card small {
+  margin-left: 4px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* 팀·선수 상단 프로필 */
+.profile {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.profile h1 {
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.profile p {
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.profile p a:hover {
+  color: var(--accent);
+}
+
+@media (max-width: 767px) {
+  .page {
+    padding-block: 20px;
+  }
+
+  .title,
+  .profile h1 {
+    font-size: 22px;
+  }
+
+  .cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .card b {
+    font-size: 18px;
+  }
+}

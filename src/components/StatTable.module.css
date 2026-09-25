@@ -1,0 +1,101 @@
+/* 통계 표 공통 스타일 (팀·선수 페이지에서 import 해서 사용) */
+
+.wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow-x: auto; /* 좁은 화면에서는 표만 가로 스크롤 */
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.table th {
+  padding: 10px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-align: right;
+  border-bottom: 1px solid var(--border);
+}
+
+.table td {
+  padding: 10px 12px;
+  text-align: right;
+  border-top: 1px solid var(--border);
+}
+
+.table tr:first-child td {
+  border-top: none;
+}
+
+.table tbody tr:hover {
+  background: var(--surface-hover);
+}
+
+/* 왼쪽 정렬 열 (순위·이름) */
+.table .left {
+  text-align: left;
+}
+
+/* 가로 스크롤 때 이름 열 고정 */
+.table .sticky {
+  position: sticky;
+  left: 0;
+  background: var(--surface);
+  z-index: 1;
+}
+
+.table tbody tr:hover .sticky {
+  background: var(--surface-hover);
+}
+
+.rank {
+  width: 40px;
+  color: var(--text-muted);
+}
+
+.name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+}
+
+.name small {
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.name:hover {
+  color: var(--accent);
+}
+
+.strong {
+  font-weight: 800;
+}
+
+.muted {
+  color: var(--text-muted);
+}
+
+.plus {
+  color: var(--blue-side);
+}
+
+.minus {
+  color: var(--red-side);
+}
+
+/* 정렬 가능한 열 제목 */
+.sortLink:hover {
+  color: var(--text);
+}
+
+.sorted {
+  color: var(--accent);
+}
