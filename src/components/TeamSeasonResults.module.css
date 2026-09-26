@@ -1,0 +1,32 @@
+.gold,
+.silver,
+.plain {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.gold {
+  color: #0b0e14;
+  background: var(--accent);
+}
+
+.silver {
+  color: var(--text);
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+}
+
+.plain {
+  padding-inline: 0;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.note {
+  margin-left: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+}

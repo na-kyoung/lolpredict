@@ -6,6 +6,7 @@ import { supabase, MATCH_COLUMNS } from '@/lib/supabase';
 import { check, fetchAll, getPlayerMap, getTournamentIds, pickComp } from '@/lib/queries';
 import CompTabs from '@/components/CompTabs';
 import TeamTrophies from '@/components/TeamTrophies';
+import TeamSeasonResults from '@/components/TeamSeasonResults';
 import { playerLabel } from '@/lib/labels';
 import { duration, kda, num, signed, winRate, ROLE_LABELS, ROLE_ORDER } from '@/lib/stats';
 import page from '@/components/Page.module.css';
@@ -115,6 +116,18 @@ export default async function TeamPage({ params, searchParams }) {
     : [[], new Map(), []];
   const roster = buildRoster(rosterRows, players);
 
+  // 대회별 성적 계산용: 그해 구단이 참가한 대회들의 모든 매치 (다른 팀 경기 포함)
+  const seasonTournamentIds = [...new Set(matches.map((m) => m.tournament.id))];
+  const seasonMatches = seasonTournamentIds.length
+    ? await fetchAll(() =>
+        supabase
+          .from('matches')
+          .select('id, tournament_id, start_time, stage, state, team1_score, team2_score, winner_id, team1:team1_id (id), team2:team2_id (id)')
+          .in('tournament_id', seasonTournamentIds)
+          .order('id'),
+      )
+    : [];
+
   // 우승·준우승: 구단이 뛴 모든 결승 (LCK + 국제대회). 월즈 선발전 결승은 우승 개념이 아니라서 제외
   const finals = (
     await supabase
@@ -202,6 +215,13 @@ export default async function TeamPage({ params, searchParams }) {
               <small>/ {winRate(season.wins - season.blue_wins, season.games - season.blue_games)}</small>
             </div>
           </div>
+
+          <TeamSeasonResults
+            year={year}
+            ourMatches={matches}
+            allMatches={seasonMatches}
+            orgIds={orgTeams.map((t) => t.id)}
+          />
 
           <section className={page.section}>
             <h2 className={page.sectionTitle}>{year} 로스터</h2>

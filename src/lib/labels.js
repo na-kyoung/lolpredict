@@ -37,9 +37,22 @@ export function playerLabel(name) {
   return name.replace(/\s*\(.*\)$/, '');
 }
 
+// 앞부분이 같은 단계 이름: "Groups Day 3" → "그룹 3일차", "Playoffs Round 2" → "플레이오프 2라운드"
+const STAGE_PREFIXES = [
+  ['Groups Day ', '그룹 ', '일차'],
+  ['Play-In Day ', '플레이-인 ', '일차'],
+  ['Play-In Round ', '플레이-인 ', '라운드'],
+  ['Playoffs Round ', '플레이오프 ', '라운드'],
+  ['Bracket Round ', '브래킷 ', '라운드'],
+  ['Rumble Day ', '럼블 ', '일차'],
+];
+
 // "Week 3" → "3주차", "Finals" → "결승"
 export function stageLabel(stage) {
   if (!stage) return '';
+  for (const [prefix, ko, unit] of STAGE_PREFIXES) {
+    if (stage.startsWith(prefix)) return `${ko}${stage.slice(prefix.length)}${unit}`;
+  }
   const week = stage.match(/^Week (\d+)$/);
   if (week) return `${week[1]}주차`;
   const round = stage.match(/^Round (\d+)$/);
@@ -52,6 +65,12 @@ export function stageLabel(stage) {
     Quarterfinals: '8강',
     'Play-In': '플레이-인',
     Tiebreakers: '타이브레이커',
+    'Groups Tiebreakers': '그룹 타이브레이커',
+    Qualifiers: '진출전',
+    'Qualification Round': '진출전',
+    'Qualifying Round': '진출전',
+    'Elimination Round': '탈락전',
+    'Last Chance Qualifier': '최종 진출전',
   };
   return map[stage] ?? stage;
 }
