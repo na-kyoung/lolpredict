@@ -19,7 +19,7 @@ export function pickYear(years, value) {
 
 // { id → 팀 }  (통계 뷰는 팀 정보를 직접 붙일 수 없어서 따로 읽어 연결)
 export async function getTeamMap() {
-  const rows = check(await supabase.from('teams').select('id, name, short, image_url, renamed_to'));
+  const rows = check(await supabase.from('teams').select('id, name, short, image_url, image_url_light, renamed_to'));
   return new Map(rows.map((t) => [t.id, t]));
 }
 

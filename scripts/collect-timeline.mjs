@@ -3,10 +3,10 @@
 //
 // 사용법: npm run collect:timeline
 //   1) 우리 매치 ↔ LoL Esports 매치를 시간·팀 약칭으로 연결
-//   2) 팀 로고·LoL Esports 팀 id 저장
+//   2) 팀 로고 갱신 (기본 + 밝은 배경용, 팀 계보로 공유)
 //   3) 골드 그래프가 없는 세트만 골라 수집 (게임당 약 40번 요청)
 import { db, upsert } from './lib/db.mjs';
-import { getAllEvents, getMatchDetails, getGoldTimeline } from './lib/lolesports.mjs';
+import { getAllEvents, getMatchDetails, getGoldTimeline, getTeamLogos } from './lib/lolesports.mjs';
 
 const CONCURRENCY = 4;
 const HOUR = 3600000;
@@ -52,11 +52,11 @@ async function linkMatches() {
     const { error: matchError } = await db.from('matches').update({ esports_id: event.match.id }).eq('id', m.id);
     if (matchError) throw new Error(matchError.message);
 
-    // 팀 로고·id: 약칭이 같은 팀에만 저장
+    // LoL Esports 팀 id: 약칭이 같은 팀에만 저장 (로고는 updateLogos 에서)
     for (const et of details.teams) {
       const team = ours.find((x) => (x.short || '').toUpperCase() === et.code.toUpperCase());
       if (!team || team.esports_id || usedEsportsTeamIds.has(et.id)) continue;
-      await db.from('teams').update({ esports_id: et.id, image_url: et.image }).eq('id', team.id);
+      await db.from('teams').update({ esports_id: et.id }).eq('id', team.id);
       team.esports_id = et.id;
       usedEsportsTeamIds.add(et.id);
     }
@@ -88,10 +88,13 @@ async function getTargets() {
   }
 }
 
-// LoL Esports 는 구단 하나에 팀 id 가 하나라서 로고가 한 팀명에만 저장됨.
-// 팀 계보(renamed_to)로 묶인 같은 구단의 다른 이름들에도 로고를 채움
-export async function shareLogos() {
-  const { data: teams, error } = await db.from('teams').select('id,name,renamed_to,image_url');
+// 팀 로고 갱신 (기본 로고 + 밝은 배경용 로고)
+// LoL Esports 는 구단 하나에 팀 id 가 하나라서, 팀 계보(renamed_to)로 묶인 같은 구단의 모든 이름에 같은 로고를 저장
+async function updateLogos() {
+  const [logos, { data: teams, error }] = await Promise.all([
+    getTeamLogos(),
+    db.from('teams').select('id,name,renamed_to,esports_id,image_url,image_url_light'),
+  ]);
   if (error) throw new Error(error.message);
 
   const root = new Map(teams.map((t) => [t.name, t.name]));
@@ -101,15 +104,23 @@ export async function shareLogos() {
   }
 
   const logoOf = new Map();
-  for (const t of teams) if (t.image_url) logoOf.set(find(t.name), t.image_url);
-  let filled = 0;
+  for (const t of teams) {
+    const logo = t.esports_id && logos.get(t.esports_id);
+    if (logo) logoOf.set(find(t.name), logo);
+  }
+
+  let changed = 0;
   for (const t of teams) {
     const logo = logoOf.get(find(t.name));
-    if (t.image_url || !logo) continue;
-    await db.from('teams').update({ image_url: logo }).eq('id', t.id);
-    filled++;
+    if (!logo || (t.image_url === logo.dark && t.image_url_light === logo.light)) continue;
+    const { error: updateError } = await db
+      .from('teams')
+      .update({ image_url: logo.dark, image_url_light: logo.light })
+      .eq('id', t.id);
+    if (updateError) throw new Error(updateError.message);
+    changed++;
   }
-  if (filled) console.log(`로고 공유 ${filled}개 팀`);
+  if (changed) console.log(`팀 로고 갱신 ${changed}개`);
 }
 
 async function collectTimelines() {
@@ -157,7 +168,7 @@ async function collectTimelines() {
 
 async function main() {
   await linkMatches();
-  await shareLogos();
+  await updateLogos();
   await collectTimelines();
 }
 

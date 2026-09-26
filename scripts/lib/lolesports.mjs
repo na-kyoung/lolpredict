@@ -26,6 +26,19 @@ export async function getAllEvents() {
   return events.filter((e) => e.match);
 }
 
+// 팀 로고: { 팀 id → { dark: 기본 로고, light: 밝은 배경용 로고(없으면 null) } }
+// 로고 주소는 http 로 오지만 https 도 제공되므로 https 로 바꿔 저장 (사이트가 https 라서)
+export async function getTeamLogos() {
+  const https = (url) => url?.replace(/^http:\/\//, 'https://') ?? null;
+  const teams = (await gw('getTeams?hl=ko-KR')).teams;
+  return new Map(
+    teams.map((t) => [
+      t.id,
+      { dark: https(t.image), light: t.alternativeImage && t.alternativeImage !== t.image ? https(t.alternativeImage) : null },
+    ]),
+  );
+}
+
 export async function getMatchDetails(matchId) {
   return (await gw(`getEventDetails?hl=ko-KR&id=${matchId}`)).event.match;
 }

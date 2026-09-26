@@ -1,3 +1,8 @@
+.picture {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
 .logo {
   object-fit: contain;
   flex-shrink: 0;

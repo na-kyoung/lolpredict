@@ -10,8 +10,8 @@ export const supabase = createClient(
 // 매치 목록 조회 시 공통으로 가져올 컬럼 (팀 정보 포함)
 export const MATCH_COLUMNS = `
   id, start_time, stage, best_of, state, team1_score, team2_score, winner_id,
-  team1:team1_id (id, name, short, image_url),
-  team2:team2_id (id, name, short, image_url),
+  team1:team1_id (id, name, short, image_url, image_url_light),
+  team2:team2_id (id, name, short, image_url, image_url_light),
   tournament:tournament_id (id, name),
   predictions (model, team1_win_prob)
 `;

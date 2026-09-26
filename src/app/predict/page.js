@@ -27,7 +27,7 @@ export default async function PredictPage() {
   const [power, players, upcoming, preds] = await Promise.all([
     supabase
       .from('team_power')
-      .select('rating, lineup, last_game_at, team:team_id (id, name, short, image_url)')
+      .select('rating, lineup, last_game_at, team:team_id (id, name, short, image_url, image_url_light)')
       .order('rating', { ascending: false })
       .then(check),
     getPlayerMap(),

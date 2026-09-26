@@ -13,7 +13,8 @@ create table teams (
   name         text not null unique,      -- Leaguepedia 팀 이름 (T1, Gen.G ...)
   short        text,                      -- 약칭 (T1, GEN ...)
   renamed_to   text,                      -- 팀명이 바뀐 경우 새 이름 (Elo 연속성용)
-  image_url    text,
+  image_url    text,                      -- 로고 (어두운 배경용, 기본)
+  image_url_light text,                   -- 밝은 배경용 로고 (팀이 따로 제공하는 경우만)
   esports_id   text unique                -- LoL Esports API 팀 id (로고·골드 그래프 매핑용)
 );
 
