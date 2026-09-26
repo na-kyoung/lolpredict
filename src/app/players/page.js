@@ -2,7 +2,9 @@ import Link from 'next/link';
 import TeamLogo from '@/components/TeamLogo';
 import YearTabs from '@/components/YearTabs';
 import { supabase } from '@/lib/supabase';
-import { check, getPlayerMap, getTeamMap, getYears, pickYear } from '@/lib/queries';
+import { check, getPlayerMap, getTeamMap, getYears, pickComp, pickYear } from '@/lib/queries';
+import CompTabs from '@/components/CompTabs';
+import NoData from '@/components/NoData';
 import { playerLabel } from '@/lib/labels';
 import { kda, num, winRate, ROLE_LABELS, ROLE_ORDER } from '@/lib/stats';
 import page from '@/components/Page.module.css';
@@ -10,7 +12,8 @@ import t from '@/components/StatTable.module.css';
 
 export const metadata = { title: '선수 통계' };
 
-const MIN_GAMES = 5; // 표본이 너무 적은 선수는 제외
+// 표본이 너무 적은 선수는 제외 (국제대회는 한 해 경기 수가 적어서 기준을 낮춤)
+const MIN_GAMES = { lck: 5, intl: 3 };
 
 // 정렬 가능한 열: [키, 제목, 값 꺼내기]  (Perfect KDA 는 가장 위로)
 const SORTS = [
@@ -23,21 +26,30 @@ const SORTS = [
   ['damage', '딜량/분', (r) => Number(r.damage_per_min ?? 0)],
 ];
 
-// /players?year=2026&role=mid&sort=kda
+// /players?comp=intl&year=2026&role=mid&sort=kda
 export default async function PlayersPage({ searchParams }) {
   const params = await searchParams;
-  const years = await getYears();
+  const comp = pickComp(params.comp);
+  const years = await getYears(comp);
+  if (!years.length) return <NoData title="선수 통계" comp={comp} basePath="/players" />;
   const year = pickYear(years, params.year);
   const role = ROLE_ORDER.includes(params.role) ? params.role : null;
   const [sortKey, , sortValue] = SORTS.find(([key]) => key === params.sort) ?? SORTS[2];
+  const minGames = MIN_GAMES[comp];
+  const compParam = comp === 'intl' ? { comp } : {};
 
-  let query = supabase.from('player_season_stats').select('*').eq('year', year).gte('games', MIN_GAMES);
+  let query = supabase
+    .from('player_season_stats')
+    .select('*')
+    .eq('year', year)
+    .eq('competition', comp)
+    .gte('games', minGames);
   if (role) query = query.eq('role', role);
   const [rows, teams, players] = await Promise.all([query.then(check), getTeamMap(), getPlayerMap()]);
   rows.sort((a, b) => sortValue(b) - sortValue(a));
 
   const link = (changes) => {
-    const q = new URLSearchParams({ year: String(year), ...(role && { role }), sort: sortKey, ...changes });
+    const q = new URLSearchParams({ ...compParam, year: String(year), ...(role && { role }), sort: sortKey, ...changes });
     for (const [k, v] of [...q]) if (!v) q.delete(k);
     return `/players?${q}`;
   };
@@ -46,10 +58,16 @@ export default async function PlayersPage({ searchParams }) {
     <div className={`container ${page.page}`}>
       <h1 className={page.title}>선수 통계</h1>
       <p className={page.desc}>
-        {year}년 LCK 전체 경기 기준 · {MIN_GAMES}세트 이상 출전
+        {year}년 {comp === 'lck' ? 'LCK' : '국제대회'} 전체 경기 기준 · {minGames}세트 이상 출전
         {year === 2020 && ' · 2020년은 딜량 기록이 일부만 있어요'}
       </p>
-      <YearTabs basePath="/players" years={years} year={year} params={{ ...(role && { role }), sort: sortKey }} />
+      <CompTabs comp={comp} href={(c) => `/players${c === 'intl' ? '?comp=intl' : ''}`} />
+      <YearTabs
+        basePath="/players"
+        years={years}
+        year={year}
+        params={{ ...compParam, ...(role && { role }), sort: sortKey }}
+      />
 
       <nav className={page.filters} aria-label="포지션 선택">
         <Link href={link({ role: '' })} className={role ? page.chip : page.activeChip}>
@@ -90,12 +108,12 @@ export default async function PlayersPage({ searchParams }) {
                   <tr key={r.player_id}>
                     <td className={`${t.left} ${t.rank}`}>{i + 1}</td>
                     <td className={`${t.left} ${t.sticky}`}>
-                      <Link href={`/players/${r.player_id}?year=${year}`} className={t.name}>
+                      <Link href={`/players/${r.player_id}?${new URLSearchParams({ ...compParam, year })}`} className={t.name}>
                         {playerLabel(players.get(r.player_id).name)}
                       </Link>
                     </td>
                     <td className={t.left}>
-                      <Link href={`/teams/${team.id}?year=${year}`} className={t.name}>
+                      <Link href={`/teams/${team.id}?${new URLSearchParams({ ...compParam, year })}`} className={t.name}>
                         <TeamLogo team={team} size={20} />
                         <small>{team.short || team.name}</small>
                       </Link>

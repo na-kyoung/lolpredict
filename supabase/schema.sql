@@ -33,7 +33,10 @@ create table tournaments (
   year          int  not null,
   start_date    date,
   end_date      date,
-  is_playoffs   boolean not null default false
+  is_playoffs   boolean not null default false,
+  league        text not null default 'LCK',   -- LCK / Worlds / MSI / First Stand / MSC
+  -- 통계 구분: LCK 와 국제대회는 섞지 않고 따로 집계
+  competition   text generated always as (case when league = 'LCK' then 'lck' else 'intl' end) stored
 );
 
 -- 매치 (한 대진, 예: T1 vs GEN 3:1). 앞으로 열릴 경기도 포함

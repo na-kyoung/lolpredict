@@ -2,7 +2,9 @@ import Link from 'next/link';
 import ChampionIcon from '@/components/ChampionIcon';
 import YearTabs from '@/components/YearTabs';
 import { supabase } from '@/lib/supabase';
-import { check, getYears, pickYear } from '@/lib/queries';
+import { check, getYears, pickComp, pickYear } from '@/lib/queries';
+import CompTabs from '@/components/CompTabs';
+import NoData from '@/components/NoData';
 import { getChampions } from '@/lib/ddragon';
 import { kda, winRate, ROLE_LABELS, ROLE_ORDER } from '@/lib/stats';
 import page from '@/components/Page.module.css';
@@ -25,19 +27,22 @@ const SORTS = [
   ['kda', 'KDA', (r) => kdaValue(r) ?? (r.picks ? Infinity : -1)],
 ];
 
-// /champions?year=2026&role=mid&sort=picks
+// /champions?comp=intl&year=2026&role=mid&sort=picks
 export default async function ChampionsPage({ searchParams }) {
   const params = await searchParams;
-  const years = await getYears();
+  const comp = pickComp(params.comp);
+  const compParam = comp === 'intl' ? { comp } : {};
+  const years = await getYears(comp);
+  if (!years.length) return <NoData title="챔피언 통계" comp={comp} basePath="/champions" />;
   const year = pickYear(years, params.year);
   const role = ROLE_ORDER.includes(params.role) ? params.role : null;
   const sorts = SORTS.filter(([, , , allOnly]) => !(role && allOnly));
   const [sortKey, , sortValue] = sorts.find(([key]) => key === params.sort) ?? sorts[0];
 
   const [seasonRows, roleRows, champion] = await Promise.all([
-    supabase.from('champion_season_stats').select('*').eq('year', year).then(check),
+    supabase.from('champion_season_stats').select('*').eq('year', year).eq('competition', comp).then(check),
     role
-      ? supabase.from('champion_role_stats').select('*').eq('year', year).eq('role', role).then(check)
+      ? supabase.from('champion_role_stats').select('*').eq('year', year).eq('competition', comp).eq('role', role).then(check)
       : Promise.resolve(null),
     getChampions(),
   ]);
@@ -49,7 +54,7 @@ export default async function ChampionsPage({ searchParams }) {
   rows.sort((a, b) => enough(b) - enough(a) || sortValue(b) - sortValue(a) || b.picks - a.picks);
 
   const link = (changes) => {
-    const q = new URLSearchParams({ year: String(year), ...(role && { role }), sort: sortKey, ...changes });
+    const q = new URLSearchParams({ ...compParam, year: String(year), ...(role && { role }), sort: sortKey, ...changes });
     for (const [k, v] of [...q]) if (!v) q.delete(k);
     return `/champions?${q}`;
   };
@@ -58,10 +63,11 @@ export default async function ChampionsPage({ searchParams }) {
     <div className={`container ${page.page}`}>
       <h1 className={page.title}>챔피언 통계</h1>
       <p className={page.desc}>
-        {year}년 LCK 전체 {totalGames.toLocaleString('ko-KR')}세트 기준 · 픽률·밴률은 전체 세트 대비
+        {year}년 {comp === 'lck' ? 'LCK' : '국제대회'} 전체 {totalGames.toLocaleString('ko-KR')}세트 기준 · 픽률·밴률은 전체 세트 대비
         {rateSort && ` · ${MIN_PICKS}픽 미만은 아래에 흐리게 표시`}
       </p>
-      <YearTabs basePath="/champions" years={years} year={year} params={{ ...(role && { role }) }} />
+      <CompTabs comp={comp} href={(c) => `/champions${c === 'intl' ? '?comp=intl' : ''}`} />
+      <YearTabs basePath="/champions" years={years} year={year} params={{ ...compParam, ...(role && { role }) }} />
 
       <nav className={page.filters} aria-label="포지션 선택">
         <Link href={link({ role: '', sort: '' })} className={role ? page.chip : page.activeChip}>
@@ -107,7 +113,7 @@ export default async function ChampionsPage({ searchParams }) {
                   <td className={`${t.left} ${t.rank}`}>{i + 1}</td>
                   <td className={`${t.left} ${t.sticky}`}>
                     {champ.id ? (
-                      <Link href={`/champions/${champ.id}?year=${year}`} className={t.name}>
+                      <Link href={`/champions/${champ.id}?${new URLSearchParams({ ...compParam, year })}`} className={t.name}>
                         {nameCell}
                       </Link>
                     ) : (

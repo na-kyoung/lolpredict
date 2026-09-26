@@ -6,9 +6,16 @@ function check({ data, error }) {
   return data;
 }
 
-// 데이터가 있는 연도 (최신순)
-export async function getYears() {
-  const rows = check(await supabase.from('tournaments').select('year'));
+// 대회 구분: 'lck' (기본) / 'intl' (국제대회)
+export function pickComp(value) {
+  return value === 'intl' ? 'intl' : 'lck';
+}
+
+// 데이터가 있는 연도 (최신순). comp 를 주면 그 대회 구분만
+export async function getYears(comp) {
+  let query = supabase.from('tournaments').select('year');
+  if (comp) query = query.eq('competition', comp);
+  const rows = check(await query);
   return [...new Set(rows.map((r) => r.year))].sort((a, b) => b - a);
 }
 
@@ -43,9 +50,11 @@ export async function fetchAll(makeQuery) {
   }
 }
 
-// 해당 연도 대회 id 목록
-export async function getTournamentIds(year) {
-  const rows = check(await supabase.from('tournaments').select('id').eq('year', year));
+// 해당 연도 대회 id 목록 (comp 를 주면 그 대회 구분만)
+export async function getTournamentIds(year, comp) {
+  let query = supabase.from('tournaments').select('id').eq('year', year);
+  if (comp) query = query.eq('competition', comp);
+  const rows = check(await query);
   return rows.map((r) => r.id);
 }
 

@@ -3,7 +3,8 @@ import { notFound } from 'next/navigation';
 import ChampionIcon from '@/components/ChampionIcon';
 import TeamLogo from '@/components/TeamLogo';
 import { supabase } from '@/lib/supabase';
-import { check, fetchAll, getPlayerMap, getTeamMap } from '@/lib/queries';
+import { check, fetchAll, getPlayerMap, getTeamMap, pickComp } from '@/lib/queries';
+import CompTabs from '@/components/CompTabs';
 import { getChampionById, getChampions } from '@/lib/ddragon';
 import { playerLabel } from '@/lib/labels';
 import { kda, winRate, ROLE_LABELS, ROLE_ORDER } from '@/lib/stats';
@@ -26,20 +27,20 @@ function sum(rows, keys) {
 
 const kdaOf = (s) => (s.deaths ? (s.kills + s.assists) / s.deaths : null);
 
-// /champions/Azir?year=2026&role=mid   (year=all 이면 전체 기간)
+// /champions/Azir?comp=intl&year=2026&role=mid   (year=all 이면 전체 기간)
 export default async function ChampionPage({ params, searchParams }) {
   const champ = await getChampionById((await params).id);
   if (!champ) notFound();
   const query = await searchParams;
 
-  const [seasons, roleRows, matchupRows, playerRows, teams, players, champion] = await Promise.all([
+  const [allSeasons, allRoleRows, allMatchupRows, allPlayerRows, teams, players, champion] = await Promise.all([
     supabase.from('champion_season_stats').select('*').eq('champion', champ.en).order('year', { ascending: false }).then(check),
     supabase.from('champion_role_stats').select('*').eq('champion', champ.en).then(check),
     fetchAll(() => supabase.from('champion_matchups').select('*').eq('champion', champ.en)),
     fetchAll(() =>
       supabase
         .from('player_game_rows')
-        .select('player_id, team_id, year, win, kills, deaths, assists, start_time')
+        .select('player_id, team_id, year, competition, win, kills, deaths, assists, start_time')
         .eq('champion', champ.en)
         .order('start_time', { ascending: false }),
     ),
@@ -47,6 +48,16 @@ export default async function ChampionPage({ params, searchParams }) {
     getPlayerMap(),
     getChampions(),
   ]);
+
+  // LCK / 국제대회 중 기록이 있는 것만 선택 가능
+  const comps = ['lck', 'intl'].filter((c) => allSeasons.some((s) => s.competition === c));
+  const comp = comps.includes(pickComp(query.comp)) ? pickComp(query.comp) : (comps[0] ?? 'lck');
+  const inComp = (r) => r.competition === comp;
+  const [seasons, roleRows, matchupRows, playerRows] = [allSeasons, allRoleRows, allMatchupRows, allPlayerRows].map(
+    (rows) => rows.filter(inComp),
+  );
+  const compParam = comp === 'intl' ? { comp } : {};
+  const href = (extra) => `/champions/${champ.id}?${new URLSearchParams({ ...compParam, ...extra })}`;
 
   const years = seasons.map((s) => s.year);
   const year = query.year === 'all' ? 'all' : years.includes(Number(query.year)) ? Number(query.year) : years[0];
@@ -85,11 +96,11 @@ export default async function ChampionPage({ params, searchParams }) {
   }
   const topPlayers = [...byPlayer.values()].sort((a, b) => b.games - a.games || b.wins - a.wins).slice(0, 10);
 
-  const yearHref = (y) => `/champions/${champ.id}?year=${y}${role ? `&role=${role}` : ''}`;
+  const yearHref = (y) => href({ year: y, ...(role && { role }) });
 
   return (
     <div className={`container ${page.page}`}>
-      <Link href={`/champions${typeof year === 'number' ? `?year=${year}` : ''}`} className={page.back}>
+      <Link href={`/champions?${new URLSearchParams({ ...compParam, ...(typeof year === 'number' && { year }) })}`} className={page.back}>
         ← 챔피언 통계
       </Link>
 
@@ -102,9 +113,10 @@ export default async function ChampionPage({ params, searchParams }) {
       </section>
 
       {!seasons.length ? (
-        <p className={page.empty}>2020년 이후 LCK에서 픽·밴된 기록이 없어요.</p>
+        <p className={page.empty}>2020년 이후 LCK·국제대회에서 픽·밴된 기록이 없어요.</p>
       ) : (
         <>
+          <CompTabs comp={comp} available={comps} href={(c) => `/champions/${champ.id}${c === 'intl' ? '?comp=intl' : ''}`} />
           <nav className={page.filters} aria-label="기간 선택">
             <Link href={yearHref('all')} className={year === 'all' ? page.activeChip : page.chip}>
               전체 기간
@@ -180,7 +192,7 @@ export default async function ChampionPage({ params, searchParams }) {
                   {byRole.map((r) => (
                     <Link
                       key={r.role}
-                      href={`/champions/${champ.id}?year=${year}&role=${r.role}`}
+                      href={href({ year, role: r.role })}
                       className={r.role === role ? page.activeChip : page.chip}
                     >
                       {ROLE_LABELS[r.role]}
@@ -209,7 +221,7 @@ export default async function ChampionPage({ params, searchParams }) {
                           <tr key={m.opponent}>
                             <td className={`${t.left} ${t.sticky}`}>
                               {opp.id ? (
-                                <Link href={`/champions/${opp.id}?year=${year}&role=${role}`} className={t.name}>
+                                <Link href={`/champions/${opp.id}?${new URLSearchParams({ ...compParam, year, role })}`} className={t.name}>
                                   <ChampionIcon champ={opp} size={24} />
                                   {opp.name}
                                 </Link>

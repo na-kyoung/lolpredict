@@ -1,4 +1,4 @@
-// Leaguepedia 에서 LCK 경기 일정·결과·세트 기록·선수 기록을 받아 DB 에 저장합니다.
+// Leaguepedia 에서 LCK·국제대회(월즈·MSI·First Stand·MSC) 경기 일정·결과·세트 기록·선수 기록을 받아 DB 에 저장합니다.
 //
 // 사용법:
 //   npm run collect                          최근 경기만 갱신 (DB 의 마지막 경기 7일 전부터)
@@ -8,6 +8,13 @@ import { db, upsert, idMap } from './lib/db.mjs';
 
 // LCK CL 은 "LCK CL/..." 이라 제외됨. 쇼매치(이벤트 경기)도 제외
 const LCK_PAGES = 'OverviewPage LIKE "LCK/%" AND OverviewPage NOT LIKE "%Showmatch%"';
+// 국제대회: Leaguepedia League 이름 → 우리 league 값 (Riot 공식 대회만, 쇼매치 제외)
+const INTL_LEAGUES = {
+  'World Championship': 'Worlds',
+  'Mid-Season Invitational': 'MSI',
+  'First Stand': 'First Stand',
+  'Mid-Season Cup 2020': 'MSC',
+};
 const RESYNC_DAYS = 7; // 위키 수정 사항을 반영하려고 최근 경기는 다시 받음
 
 const ROLES = { Top: 'top', Jungle: 'jungle', Mid: 'mid', Bot: 'bottom', Support: 'support' };
@@ -117,13 +124,28 @@ async function assignOrgs() {
   if (changed) console.log(`  구단 연결 ${changed}개 팀`);
 }
 
-async function getTournamentInfo(since) {
-  const rows = await cargoQuery({
-    tables: 'Tournaments',
-    fields: { page: 'OverviewPage', name: 'Name', year: 'Year', start: 'DateStart', end: 'Date', playoffs: 'IsPlayoffs' },
-    where: `${LCK_PAGES} AND Year >= "${since.slice(0, 4)}"`,
-  });
-  return new Map(rows.map((t) => [t.page, t]));
+// 수집할 대회 목록: LCK + 국제대회. { info: 페이지 → 대회 정보, scope: Cargo where 조건 }
+async function getTournaments(since) {
+  const fields = {
+    page: 'OverviewPage', name: 'Name', year: 'Year', start: 'DateStart', end: 'Date', playoffs: 'IsPlayoffs', league: 'League',
+  };
+  const year = `Year >= "${since.slice(0, 4)}"`;
+  const lck = await cargoQuery({ tables: 'Tournaments', fields, where: `${LCK_PAGES} AND ${year}` });
+  const intl = (
+    await cargoQuery({
+      tables: 'Tournaments',
+      fields,
+      where: `League IN (${Object.keys(INTL_LEAGUES).map(quote).join(',')}) AND IsOfficial = "1" AND ${year}`,
+    })
+  ).filter((t) => !t.page.includes('Showmatch'));
+
+  const info = new Map();
+  for (const t of lck) info.set(t.page, { ...t, league: 'LCK' });
+  for (const t of intl) info.set(t.page, { ...t, league: INTL_LEAGUES[t.league] });
+  const intlPages = intl.map((t) => quote(t.page)).join(',');
+  const scope = intlPages ? `(${LCK_PAGES} OR OverviewPage IN (${intlPages}))` : `(${LCK_PAGES})`;
+  console.log(`  대회: LCK ${lck.length}개, 국제대회 ${intl.length}개`);
+  return { info, scope };
 }
 
 // 연도 단위로 나눔 → 연도마다 받아서 바로 저장하므로 중간에 실패해도 앞 연도는 남음
@@ -144,15 +166,15 @@ async function main() {
   const since = await getSince();
   console.log(`Leaguepedia 수집 시작 (${since} 이후)`);
   await login();
-  const tourInfo = await getTournamentInfo(since);
+  const tournaments = await getTournaments(since);
 
   for (const [from, to] of yearRanges(since)) {
     console.log(`\n=== ${from} ~ ${to ?? '앞으로 열릴 경기까지'} ===`);
-    await collectRange(from, to, tourInfo);
+    await collectRange(from, to, tournaments);
   }
 }
 
-async function collectRange(from, to, tourInfo) {
+async function collectRange(from, to, { info: tourInfo, scope }) {
   const sinceWhere = `DateTime_UTC >= "${from} 00:00:00"` + (to ? ` AND DateTime_UTC < "${to} 00:00:00"` : '');
 
   // 1. 매치 일정·결과 (앞으로 열릴 경기 포함)
@@ -165,7 +187,7 @@ async function collectRange(from, to, tourInfo) {
         team1: 'Team1', team2: 'Team2', score1: 'Team1Score', score2: 'Team2Score', winner: 'Winner',
         nullified: 'IsNullified',
       },
-      where: `${LCK_PAGES} AND ${sinceWhere}`,
+      where: `${scope} AND ${sinceWhere}`,
       orderBy: 'DateTime_UTC',
     })
   ).filter((m) => m.matchId && m.time && m.nullified !== '1' && m.team1 !== 'TBD' && m.team2 !== 'TBD');
@@ -184,7 +206,7 @@ async function collectRange(from, to, tourInfo) {
       dragons1: 'Team1Dragons', dragons2: 'Team2Dragons', barons1: 'Team1Barons', barons2: 'Team2Barons',
       heralds1: 'Team1RiftHeralds', heralds2: 'Team2RiftHeralds', grubs1: 'Team1VoidGrubs', grubs2: 'Team2VoidGrubs',
     },
-    where: `${LCK_PAGES} AND ${sinceWhere}`,
+    where: `${scope} AND ${sinceWhere}`,
     orderBy: 'DateTime_UTC,GameId',
   });
   console.log(`  ${gameRows.length}개`);
@@ -198,7 +220,7 @@ async function collectRange(from, to, tourInfo) {
       kills: 'Kills', deaths: 'Deaths', assists: 'Assists', cs: 'CS', gold: 'Gold',
       damage: 'DamageToChampions', vision: 'VisionScore', items: 'Items',
     },
-    where: `${LCK_PAGES} AND ${sinceWhere}`,
+    where: `${scope} AND ${sinceWhere}`,
     orderBy: 'DateTime_UTC,GameId,Side,Role_Number',
   });
   console.log(`  ${playerRows.length}개`);
@@ -218,6 +240,7 @@ async function collectRange(from, to, tourInfo) {
         start_date: t?.start || null,
         end_date: t?.end || null,
         is_playoffs: t?.playoffs === '1',
+        league: t?.league ?? 'LCK',
       };
     }),
     'overview_page',

@@ -3,7 +3,8 @@ import { notFound } from 'next/navigation';
 import TeamLogo from '@/components/TeamLogo';
 import MatchList from '@/components/MatchList';
 import { supabase, MATCH_COLUMNS } from '@/lib/supabase';
-import { check, fetchAll, getPlayerMap, getTournamentIds } from '@/lib/queries';
+import { check, fetchAll, getPlayerMap, getTournamentIds, pickComp } from '@/lib/queries';
+import CompTabs from '@/components/CompTabs';
 import { playerLabel } from '@/lib/labels';
 import { duration, kda, num, signed, winRate, ROLE_LABELS, ROLE_ORDER } from '@/lib/stats';
 import page from '@/components/Page.module.css';
@@ -41,14 +42,14 @@ function buildRoster(rows, players) {
     .sort((a, b) => ROLE_ORDER.indexOf(a.role) - ROLE_ORDER.indexOf(b.role) || b.games - a.games);
 }
 
-// /teams/3?year=2026
+// /teams/3?comp=intl&year=2026
 export default async function TeamPage({ params, searchParams }) {
   const team = await getTeam((await params).id);
   if (!team) notFound();
 
   // 같은 구단의 모든 팀 이름 (시즌 중 이름이 바뀌어도 기록을 합쳐서 보여줌)
   const orgId = team.org_id ?? team.id;
-  const [seasons, orgTeams] = await Promise.all([
+  const [allSeasons, orgTeams] = await Promise.all([
     supabase.from('team_season_stats').select('*').eq('org_id', orgId).order('year', { ascending: false }).then(check),
     supabase
       .from('teams')
@@ -74,8 +75,16 @@ export default async function TeamPage({ params, searchParams }) {
   }
   orgTeams.sort((a, b) => (firstSeen.get(a.id) ?? '9').localeCompare(firstSeen.get(b.id) ?? '9'));
 
+  // LCK / 국제대회 중 기록이 있는 것만 선택 가능 (해외 팀은 국제대회만)
+  const query = await searchParams;
+  const comps = ['lck', 'intl'].filter((c) => allSeasons.some((s) => s.competition === c));
+  const comp = comps.includes(pickComp(query.comp)) ? pickComp(query.comp) : (comps[0] ?? 'lck');
+  const seasons = allSeasons.filter((s) => s.competition === comp);
+  const compParam = comp === 'intl' ? { comp } : {};
+  const href = (extra) => `/teams/${team.id}?${new URLSearchParams({ ...compParam, ...extra })}`;
+
   const years = seasons.map((s) => s.year);
-  const { year: yearParam } = await searchParams;
+  const yearParam = query.year;
   const year = years.includes(Number(yearParam)) ? Number(yearParam) : years[0];
   const season = seasons.find((s) => s.year === year);
   // 그해 마지막으로 쓴 이름·로고로 표시
@@ -88,10 +97,11 @@ export default async function TeamPage({ params, searchParams }) {
             .from('player_game_rows')
             .select('player_id, role, win, kills, deaths, assists')
             .in('team_id', orgTeams.map((t) => t.id))
-            .eq('year', year),
+            .eq('year', year)
+            .eq('competition', comp),
         ),
         getPlayerMap(),
-        getTournamentIds(year).then((ids) =>
+        getTournamentIds(year, comp).then((ids) =>
           supabase
             .from('matches')
             .select(MATCH_COLUMNS)
@@ -106,7 +116,7 @@ export default async function TeamPage({ params, searchParams }) {
 
   return (
     <div className={`container ${page.page}`}>
-      <Link href={`/teams?year=${year ?? ''}`} className={page.back}>
+      <Link href={`/teams?${new URLSearchParams({ ...compParam, ...(year && { year }) })}`} className={page.back}>
         ← 팀 통계
       </Link>
 
@@ -129,12 +139,13 @@ export default async function TeamPage({ params, searchParams }) {
       </section>
 
       {!season ? (
-        <p className={page.empty}>2020년 이후 LCK 경기 기록이 없어요.</p>
+        <p className={page.empty}>2020년 이후 경기 기록이 없어요.</p>
       ) : (
         <>
+          <CompTabs comp={comp} available={comps} href={(c) => `/teams/${team.id}${c === 'intl' ? '?comp=intl' : ''}`} />
           <nav className={page.filters} aria-label="연도 선택">
             {years.map((y) => (
-              <Link key={y} href={`/teams/${team.id}?year=${y}`} className={y === year ? page.activeChip : page.chip}>
+              <Link key={y} href={href({ year: y })} className={y === year ? page.activeChip : page.chip}>
                 {y}
               </Link>
             ))}
@@ -194,7 +205,7 @@ export default async function TeamPage({ params, searchParams }) {
                   {roster.map((p) => (
                     <tr key={p.player.id}>
                       <td className={`${t.left} ${t.sticky}`}>
-                        <Link href={`/players/${p.player.id}?year=${year}`} className={t.name}>
+                        <Link href={`/players/${p.player.id}?${new URLSearchParams({ ...compParam, year })}`} className={t.name}>
                           {playerLabel(p.player.name)}
                         </Link>
                       </td>
@@ -233,7 +244,7 @@ export default async function TeamPage({ params, searchParams }) {
                   {seasons.map((s) => (
                     <tr key={s.year}>
                       <td className={t.left}>
-                        <Link href={`/teams/${team.id}?year=${s.year}`} className={t.name}>
+                        <Link href={href({ year: s.year })} className={t.name}>
                           {s.year}
                         </Link>
                       </td>

@@ -17,6 +17,10 @@
   scrollbar-width: none;
 }
 
+.comp {
+  margin-bottom: 12px;
+}
+
 .years {
   margin-bottom: 12px;
 }

@@ -2,21 +2,26 @@ import Link from 'next/link';
 import TeamLogo from '@/components/TeamLogo';
 import YearTabs from '@/components/YearTabs';
 import { supabase } from '@/lib/supabase';
-import { check, getTeamMap, getYears, pickYear } from '@/lib/queries';
+import { check, getTeamMap, getYears, pickComp, pickYear } from '@/lib/queries';
+import CompTabs from '@/components/CompTabs';
+import NoData from '@/components/NoData';
 import { duration, num, signed, winRate } from '@/lib/stats';
 import page from '@/components/Page.module.css';
 import t from '@/components/StatTable.module.css';
 
 export const metadata = { title: '팀 통계' };
 
-// /teams?year=2026
+// /teams?comp=intl&year=2026
 export default async function TeamsPage({ searchParams }) {
   const params = await searchParams;
-  const years = await getYears();
+  const comp = pickComp(params.comp);
+  const years = await getYears(comp);
+  if (!years.length) return <NoData title="팀 통계" comp={comp} basePath="/teams" />;
   const year = pickYear(years, params.year);
+  const compParam = comp === 'intl' ? { comp } : {};
 
   const [rows, teams] = await Promise.all([
-    supabase.from('team_season_stats').select('*').eq('year', year).then(check),
+    supabase.from('team_season_stats').select('*').eq('year', year).eq('competition', comp).then(check),
     getTeamMap(),
   ]);
 
@@ -29,8 +34,13 @@ export default async function TeamsPage({ searchParams }) {
   return (
     <div className={`container ${page.page}`}>
       <h1 className={page.title}>팀 통계</h1>
-      <p className={page.desc}>{year}년 LCK 전체 경기(컵·정규시즌·플레이오프 등) 기준</p>
-      <YearTabs basePath="/teams" years={years} year={year} />
+      <p className={page.desc}>
+        {comp === 'lck'
+          ? `${year}년 LCK 전체 경기(컵·정규시즌·플레이오프 등) 기준`
+          : `${year}년 국제대회(월즈·MSI·First Stand 등) 전체 경기 기준`}
+      </p>
+      <CompTabs comp={comp} href={(c) => `/teams${c === 'intl' ? '?comp=intl' : ''}`} />
+      <YearTabs basePath="/teams" years={years} year={year} params={compParam} />
 
       <div className={t.wrap}>
         <table className={t.table}>
@@ -57,7 +67,7 @@ export default async function TeamsPage({ searchParams }) {
                 <tr key={r.team_id}>
                   <td className={`${t.left} ${t.rank}`}>{i + 1}</td>
                   <td className={`${t.left} ${t.sticky}`}>
-                    <Link href={`/teams/${team.id}?year=${year}`} className={t.name}>
+                    <Link href={`/teams/${team.id}?${new URLSearchParams({ year, ...compParam })}`} className={t.name}>
                       <TeamLogo team={team} size={24} />
                       {team.name}
                     </Link>

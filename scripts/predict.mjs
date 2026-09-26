@@ -1,7 +1,8 @@
 // 선수 Elo 로 승부예측을 계산해 DB 에 저장합니다. (수집 스크립트 다음에 실행)
 //
 // 사용법: npm run predict
-//   - predictions   : 모든 매치의 "경기 전" 예측 (지난 경기 → 적중률 계산, 다가오는 경기 → 예측 표시)
+//   - predictions   : 매치의 "경기 전" 예측 (지난 경기 → 적중률 계산, 다가오는 경기 → 예측 표시)
+//                     LCK 경기 전부 + 국제대회는 LCK 팀끼리 맞붙는 경기만 (해외 팀은 점수가 부정확해서)
 //   - team_ratings  : 매치 직전 두 팀의 전력 점수
 //   - player_ratings: 현재 선수 점수
 //   - team_power    : 현재 팀 전력 (파워랭킹, 최근 시즌에 뛴 팀만)
@@ -17,7 +18,7 @@ async function loadMatches() {
   for (let from = 0; ; from += 1000) {
     const { data, error } = await db
       .from('matches')
-      .select('id, team1_id, team2_id, winner_id, best_of, state, start_time')
+      .select('id, team1_id, team2_id, winner_id, best_of, state, start_time, tournament:tournament_id (league)')
       .order('start_time')
       .range(from, from + 999);
     if (error) throw new Error(error.message);
@@ -53,9 +54,25 @@ async function main() {
     );
   };
 
-  // 1. 지난 경기: 시간순으로 예측 → 결과 반영
+  // 국제대회 매치: 두 팀 모두 LCK 팀(작년이나 올해 LCK 에서 뛴 구단)일 때만 예측
+  const isLckTeam = (teamId, year) => (lastTeam.get(orgs.get(teamId))?.year ?? -Infinity) >= year - 1;
+  const intlQueue = matches.filter((m) => m.tournament.league !== 'LCK');
+  let intlPredicted = 0;
+  const flushIntl = (beforeTime) => {
+    while (intlQueue.length && (beforeTime === null || intlQueue[0].start_time < beforeTime)) {
+      const m = intlQueue.shift();
+      const year = new Date(m.start_time).getUTCFullYear();
+      if (isLckTeam(m.team1_id, year) && isLckTeam(m.team2_id, year)) {
+        predict(m, m.best_of || 1);
+        intlPredicted++;
+      }
+    }
+  };
+
+  // 1. 지난 LCK 경기: 시간순으로 예측 → 결과 반영 (사이사이 열린 국제대회 LCK 팀끼리 경기도 그 시점 점수로 예측)
   const seen = new Set();
   for (const g of history) {
+    flushIntl(g.time);
     model.startSeason(g.year);
     if (!seen.has(g.matchId)) {
       seen.add(g.matchId);
@@ -70,13 +87,15 @@ async function main() {
     }
   }
 
-  // 2. 다가오는 경기: 현재 점수로 예측
-  const upcoming = matches.filter((m) => m.state === 'unstarted' && !seen.has(m.id));
+  // 2. 마지막 LCK 경기 이후: 국제대회(월즈 등)와 다가오는 LCK 경기를 현재 점수로 예측
+  const upcoming = matches.filter((m) => m.tournament.league === 'LCK' && m.state === 'unstarted' && !seen.has(m.id));
   for (const m of upcoming) {
+    flushIntl(m.start_time);
     model.startSeason(new Date(m.start_time).getUTCFullYear());
     predict(m, m.best_of || 1);
   }
-  console.log(`예측: 지난 매치 ${seen.size}개, 다가오는 매치 ${upcoming.length}개`);
+  flushIntl(null);
+  console.log(`예측: LCK 지난 매치 ${seen.size}개, LCK 다가오는 매치 ${upcoming.length}개, 국제대회 LCK 팀끼리 ${intlPredicted}개`);
 
   // 3. 저장
   await upsert('predictions', predictions, 'match_id,model');

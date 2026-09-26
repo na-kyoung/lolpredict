@@ -4,7 +4,13 @@
 const GW = 'https://esports-api.lolesports.com/persisted/gw';
 const FEED = 'https://feed.lolesports.com/livestats/v1';
 const API_KEY = '0TvQnueqKa5mxJntVWt0w4LpLfEkrV1Ta8rQBb9Z'; // lolesports.com 웹사이트에 공개된 키
-export const LCK_LEAGUE_ID = '98767991310872058';
+// 수집 대상 리그: LCK + 국제대회 (MSC 2020 은 LoL Esports API 에 없음 → 골드 그래프 없음)
+export const LEAGUE_IDS = {
+  LCK: '98767991310872058',
+  Worlds: '98767975604431411',
+  MSI: '98767991325878492',
+  'First Stand': '113464388705111224',
+};
 
 async function gw(path) {
   const res = await fetch(`${GW}/${path}`, { headers: { 'x-api-key': API_KEY } });
@@ -12,17 +18,19 @@ async function gw(path) {
   return (await res.json()).data;
 }
 
-// LCK 전체 일정 (API 에 남아 있는 2024~ 전부)
+// 수집 대상 리그의 전체 일정 (API 에 남아 있는 2024~ 전부)
 export async function getAllEvents() {
   const events = [];
-  let token = null;
-  do {
-    const data = await gw(
-      `getSchedule?hl=ko-KR&leagueId=${LCK_LEAGUE_ID}${token ? `&pageToken=${encodeURIComponent(token)}` : ''}`,
-    );
-    events.push(...data.schedule.events);
-    token = data.schedule.pages.older;
-  } while (token);
+  for (const leagueId of Object.values(LEAGUE_IDS)) {
+    let token = null;
+    do {
+      const data = await gw(
+        `getSchedule?hl=ko-KR&leagueId=${leagueId}${token ? `&pageToken=${encodeURIComponent(token)}` : ''}`,
+      );
+      events.push(...data.schedule.events);
+      token = data.schedule.pages.older;
+    } while (token);
+  }
   return events.filter((e) => e.match);
 }
 

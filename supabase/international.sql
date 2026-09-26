@@ -1,8 +1,12 @@
--- lolpredict 통계 뷰
--- schema.sql 실행 후, Supabase 대시보드 > SQL Editor 에 전체를 붙여넣고 실행하세요.
--- 뷰는 "저장된 조회문"이라 데이터가 늘어나면 통계도 자동으로 바뀝니다.
--- security_invoker: 조회하는 사람의 권한(읽기 전용)으로 실행
--- competition: 'lck' (LCK) / 'intl' (월즈·MSI 등 국제대회) — 통계는 둘을 섞지 않고 따로 집계
+-- 국제대회(월즈·MSI·First Stand·MSC) 추가 (2026-09-26 변경)
+-- Supabase 대시보드 > SQL Editor 에 전체를 붙여넣고 실행하세요. (한 번만)
+-- 1) 대회에 리그 구분 추가  2) 통계 뷰를 LCK / 국제대회 별로 다시 만들기
+-- (아래 뷰 부분은 views.sql + champion_views.sql 과 같은 내용)
+
+alter table tournaments add column if not exists league text not null default 'LCK';
+alter table tournaments add column if not exists competition text
+  generated always as (case when league = 'LCK' then 'lck' else 'intl' end) stored;
+
 
 -- 다시 만들 때 컬럼이 바뀌면 교체가 안 되므로 먼저 삭제 (챔피언 뷰도 이 뷰들을 참조해서 함께 삭제됨)
 drop view if exists champion_matchups, champion_role_stats, champion_season_stats,
@@ -105,4 +109,69 @@ from game_agg ga
 left join match_agg ma on ma.org_id = ga.org_id and ma.year = ga.year and ma.competition = ga.competition;
 
 grant select on player_game_rows, player_season_stats, team_season_stats to anon, authenticated, service_role;
+notify pgrst, 'reload schema';
+
+
+-- 챔피언 연도별 통계 (픽·밴·승률)
+create or replace view champion_season_stats with (security_invoker = true) as
+with picks as (
+  select
+    year, competition, champion,
+    count(*) as picks,
+    count(*) filter (where win) as wins,
+    sum(kills) as kills, sum(deaths) as deaths, sum(assists) as assists,
+    mode() within group (order by role) as main_role
+  from player_game_rows
+  group by year, competition, champion
+),
+bans as (
+  select t.year, t.competition, b.champion, count(*) as bans
+  from game_teams gt
+  cross join lateral unnest(gt.bans) as b(champion)
+  join games g on g.id = gt.game_id
+  join matches m on m.id = g.match_id
+  join tournaments t on t.id = m.tournament_id
+  group by t.year, t.competition, b.champion
+),
+totals as (
+  select t.year, t.competition, count(*) as total_games
+  from games g
+  join matches m on m.id = g.match_id
+  join tournaments t on t.id = m.tournament_id
+  group by t.year, t.competition
+)
+select
+  coalesce(p.year, b.year) as year,
+  coalesce(p.competition, b.competition) as competition,
+  coalesce(p.champion, b.champion) as champion,
+  coalesce(p.picks, 0) as picks,
+  coalesce(p.wins, 0) as wins,
+  p.kills, p.deaths, p.assists, p.main_role,
+  coalesce(b.bans, 0) as bans,
+  tot.total_games                               -- 픽률·밴률 분모 (그해 전체 세트 수)
+from picks p
+full join bans b on b.year = p.year and b.competition = p.competition and b.champion = p.champion
+join totals tot on tot.year = coalesce(p.year, b.year) and tot.competition = coalesce(p.competition, b.competition);
+
+-- 챔피언 포지션별 통계
+create or replace view champion_role_stats with (security_invoker = true) as
+select
+  year, competition, champion, role,
+  count(*) as picks,
+  count(*) filter (where win) as wins,
+  sum(kills) as kills, sum(deaths) as deaths, sum(assists) as assists
+from player_game_rows
+group by year, competition, champion, role;
+
+-- 라인 상성: 같은 세트·같은 포지션에서 맞붙은 상대 챔피언별 전적
+create or replace view champion_matchups with (security_invoker = true) as
+select
+  a.year, a.competition, a.role, a.champion, b.champion as opponent,
+  count(*) as games,
+  count(*) filter (where a.win) as wins
+from player_game_rows a
+join player_game_rows b on b.game_id = a.game_id and b.role = a.role and b.side <> a.side
+group by a.year, a.competition, a.role, a.champion, b.champion;
+
+grant select on champion_season_stats, champion_role_stats, champion_matchups to anon, authenticated, service_role;
 notify pgrst, 'reload schema';

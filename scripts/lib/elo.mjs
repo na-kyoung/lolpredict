@@ -41,7 +41,8 @@ export async function loadOrgs() {
   return new Map(teams.map((t) => [t.id, orgOf(t.name)]));
 }
 
-// 모든 완료된 세트를 시간순으로: { matchId, time, year, game, blue: {teamId, org, players}, red, blueWin }
+// 모든 완료된 LCK 세트를 시간순으로: { matchId, time, year, game, blue: {teamId, org, players}, red, blueWin }
+// 국제대회는 제외: 해외 선수는 기록이 적어 점수가 부정확하고, 그 상대로 LCK 선수 점수가 왜곡됨
 export async function loadHistory() {
   const [orgs, games, rows] = await Promise.all([
     loadOrgs(),
@@ -53,7 +54,12 @@ export async function loadHistory() {
         .order('id'),
     ),
     fetchAll(() =>
-      db.from('player_game_rows').select('game_id, player_id, side, role, year').order('game_id').order('player_id'),
+      db
+        .from('player_game_rows')
+        .select('game_id, player_id, side, role, year')
+        .eq('competition', 'lck')
+        .order('game_id')
+        .order('player_id'),
     ),
   ]);
 
