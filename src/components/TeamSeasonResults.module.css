@@ -9,7 +9,7 @@
 }
 
 .gold {
-  color: #0b0e14;
+  color: var(--on-accent);
   background: var(--accent);
 }
 

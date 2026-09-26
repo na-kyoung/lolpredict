@@ -7,6 +7,7 @@
   --text: #e8ecf3;
   --text-muted: #8b95a7;
   --accent: #c8aa6e;          /* 롤 골드 */
+  --on-accent: #0b0e14;       /* 금색 배경 위 글자 (우승 배지, 선택된 연도) */
   --blue-side: #4a90e2;
   --red-side: #e5534b;
   --win: #e8ecf3;
@@ -25,7 +26,8 @@
     --border: #e1e5eb;
     --text: #151a23;
     --text-muted: #5f6878;
-    --accent: #a07d35;
+    --accent: #8a6a2a;        /* 흰 글자·흰 배경과 명암비 5:1 (웹 접근성 기준 4.5:1 이상) */
+    --on-accent: #ffffff;     /* 밝은 모드는 금색이 진해서 흰 글자가 더 잘 보임 */
     --win: #151a23;
     --lose: #9aa2b1;
     color-scheme: light;

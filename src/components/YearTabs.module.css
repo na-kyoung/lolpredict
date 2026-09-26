@@ -23,5 +23,5 @@
 .active {
   background: var(--accent);
   border-color: var(--accent);
-  color: #0b0e14;
+  color: var(--on-accent);
 }
