@@ -34,17 +34,21 @@ export async function getAllEvents() {
   return events.filter((e) => e.match);
 }
 
-// 팀 로고: { 팀 id → { dark: 기본 로고, light: 밝은 배경용 로고(없으면 null) } }
+// 전체 팀 목록 (해체·개명된 예전 팀 포함): [{ id, name, code, logos: { dark, light } }]
 // 로고 주소는 http 로 오지만 https 도 제공되므로 https 로 바꿔 저장 (사이트가 https 라서)
-export async function getTeamLogos() {
+// light: 밝은 배경용 로고 (기본 로고와 다를 때만)
+export async function getTeams() {
   const https = (url) => url?.replace(/^http:\/\//, 'https://') ?? null;
   const teams = (await gw('getTeams?hl=ko-KR')).teams;
-  return new Map(
-    teams.map((t) => [
-      t.id,
-      { dark: https(t.image), light: t.alternativeImage && t.alternativeImage !== t.image ? https(t.alternativeImage) : null },
-    ]),
-  );
+  return teams.map((t) => ({
+    id: t.id,
+    name: t.name,
+    code: t.code,
+    logos: {
+      dark: https(t.image),
+      light: t.alternativeImage && t.alternativeImage !== t.image ? https(t.alternativeImage) : null,
+    },
+  }));
 }
 
 export async function getMatchDetails(matchId) {

@@ -6,7 +6,7 @@
 //   2) 팀 로고 갱신 (기본 + 밝은 배경용, 팀 계보로 공유)
 //   3) 골드 그래프가 없는 세트만 골라 수집 (게임당 약 40번 요청)
 import { db, upsert } from './lib/db.mjs';
-import { getAllEvents, getMatchDetails, getGoldTimeline, getTeamLogos } from './lib/lolesports.mjs';
+import { getAllEvents, getMatchDetails, getGoldTimeline, getTeams } from './lib/lolesports.mjs';
 
 const CONCURRENCY = 4;
 const HOUR = 3600000;
@@ -88,20 +88,67 @@ async function getTargets() {
   }
 }
 
+// 이름 비교용: "Rogue (European Team)" → "rogue", "Evil Geniuses.NA" → "evilgeniuses"
+const normName = (s) =>
+  s
+    .toLowerCase()
+    .replace(/\s*\(.*\)|\.[a-z]+$/g, '')
+    .replace(/[^a-z0-9]/g, '');
+
+// 경기로 연결되지 않은 팀(2024년 이전에만 국제대회에 나온 해외 팀 등)을 LoL Esports 팀 목록에서 이름·약칭으로 찾기
+function findEsportsTeam(team, esTeams) {
+  const withLogo = esTeams.filter((x) => x.logos.dark);
+  const name = normName(team.name);
+  const exact = withLogo.filter((x) => normName(x.name) === name);
+  if (exact.length === 1) return exact[0];
+  const byCode = withLogo.filter((x) => x.code?.toUpperCase() === team.short?.toUpperCase());
+  if (byCode.length === 1) return byCode[0];
+  const contains = (x) => normName(x.name).includes(name) || name.includes(normName(x.name));
+  const codeAndName = byCode.filter(contains);
+  if (codeAndName.length === 1) return codeAndName[0];
+  const nameOnly = withLogo.filter(contains);
+  if (nameOnly.length === 1) return nameOnly[0];
+
+  // 후보가 여럿이면 (예: Cloud9 Kia / Cloud9 Challengers) 2군 팀을 빼고 가장 먼저 등록된 팀(본 팀)을 선택
+  const main = (codeAndName.length ? codeAndName : nameOnly).filter(
+    (x) => !/challengers|academy|akademi|amateur/i.test(x.name),
+  );
+  const byAge = (a, b) => a.id.length - b.id.length || a.id.localeCompare(b.id);
+  return main.sort(byAge)[0] ?? null;
+}
+
 // 팀 로고 갱신 (기본 로고 + 밝은 배경용 로고)
 // LoL Esports 는 구단 하나에 팀 id 가 하나라서, 팀 계보(renamed_to)로 묶인 같은 구단의 모든 이름에 같은 로고를 저장
 async function updateLogos() {
-  const [logos, { data: teams, error }] = await Promise.all([
-    getTeamLogos(),
-    db.from('teams').select('id,name,renamed_to,esports_id,image_url,image_url_light'),
+  const [esTeams, { data: teams, error }] = await Promise.all([
+    getTeams(),
+    db.from('teams').select('id,name,short,renamed_to,esports_id,image_url,image_url_light'),
   ]);
   if (error) throw new Error(error.message);
+  const logos = new Map(esTeams.map((x) => [x.id, x.logos]));
 
   const root = new Map(teams.map((t) => [t.name, t.name]));
   const find = (n) => (root.get(n) === n ? n : find(root.get(n)));
   for (const t of teams) {
     if (t.renamed_to && root.has(t.renamed_to)) root.set(find(t.name), find(t.renamed_to));
   }
+
+  // 구단 안에 LoL Esports 와 연결된 팀이 하나도 없으면 이름·약칭으로 찾아 연결
+  const linkedOrgs = new Set(teams.filter((t) => t.esports_id).map((t) => find(t.name)));
+  const usedIds = new Set(teams.map((t) => t.esports_id).filter(Boolean));
+  let linked = 0;
+  for (const t of teams) {
+    if (linkedOrgs.has(find(t.name))) continue;
+    const match = findEsportsTeam(t, esTeams);
+    if (!match || usedIds.has(match.id)) continue;
+    const { error: linkError } = await db.from('teams').update({ esports_id: match.id }).eq('id', t.id);
+    if (linkError) throw new Error(linkError.message);
+    t.esports_id = match.id;
+    usedIds.add(match.id);
+    linkedOrgs.add(find(t.name));
+    linked++;
+  }
+  if (linked) console.log(`팀 이름으로 LoL Esports 연결 ${linked}개`);
 
   const logoOf = new Map();
   for (const t of teams) {

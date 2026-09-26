@@ -19,7 +19,8 @@ const RESYNC_DAYS = 7; // 위키 수정 사항을 반영하려고 최근 경기�
 
 const ROLES = { Top: 'top', Jungle: 'jungle', Mid: 'mid', Bot: 'bottom', Support: 'support' };
 
-// 예전 팀명은 Leaguepedia 에 약칭이 없어서(현재 팀 약칭만 있음) 당시 약칭을 직접 지정
+// Leaguepedia 에 약칭이 없는 팀은 직접 지정
+// (예전 LCK 팀명은 현재 팀 약칭만 있어서 당시 약칭, 일부 해외 팀은 Teams 정보가 없음)
 const HISTORICAL_SHORT = {
   'Afreeca Freecs': 'AF',
   'Kwangdong Freecs': 'KDF',
@@ -39,6 +40,13 @@ const HISTORICAL_SHORT = {
   'Team Dynamics': 'DYN',
   'Seorabeol Gaming': 'SRB',
   'Griffin (Korean Team)': 'GRF',
+  // 해외 팀
+  'Evil Geniuses.NA': 'EG',
+  'Istanbul Wildcats': 'IW',
+  'paiN Gaming': 'PNG',
+  'Rogue (European Team)': 'RGE',
+  'PEACE (Oceanic Team)': 'PCE',
+  'LYON (2024 American Team)': 'LYON',
 };
 
 const num = (v) => (v === '' || v == null ? null : Number(v));
@@ -137,7 +145,10 @@ async function getTournaments(since) {
       fields,
       where: `League IN (${Object.keys(INTL_LEAGUES).map(quote).join(',')}) AND IsOfficial = "1" AND ${year}`,
     })
-  ).filter((t) => !t.page.includes('Showmatch'));
+  )
+    // 쇼매치 제외. 각 리그의 월즈 선발전("LCK/2024 Season/Regional Finals" 등)도 League 가 World Championship 으로
+    // 되어 있어서 제외 (LCK 선발전은 위의 LCK 목록에 들어 있음)
+    .filter((t) => !t.page.includes('Showmatch') && !t.page.includes('Regional Finals'));
 
   const info = new Map();
   for (const t of lck) info.set(t.page, { ...t, league: 'LCK' });
