@@ -1,0 +1,82 @@
+.summary {
+  margin-left: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.summary b {
+  color: var(--accent);
+}
+
+.list {
+  list-style: none;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.list li + li {
+  border-top: 1px solid var(--border);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 64px 48px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+}
+
+.row:hover {
+  background: var(--surface-hover);
+}
+
+.gold,
+.silver {
+  justify-self: start;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.gold {
+  color: #0b0e14;
+  background: var(--accent);
+}
+
+.silver {
+  color: var(--text-muted);
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+}
+
+.year {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.title {
+  font-weight: 700;
+}
+
+.detail {
+  color: var(--text-muted);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 모바일: 결승 스코어를 아래 줄로 */
+@media (max-width: 767px) {
+  .row {
+    grid-template-columns: 60px 40px 1fr;
+    row-gap: 2px;
+    padding: 10px 12px;
+  }
+
+  .detail {
+    grid-column: 3;
+  }
+}

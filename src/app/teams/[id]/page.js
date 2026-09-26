@@ -5,6 +5,7 @@ import MatchList from '@/components/MatchList';
 import { supabase, MATCH_COLUMNS } from '@/lib/supabase';
 import { check, fetchAll, getPlayerMap, getTournamentIds, pickComp } from '@/lib/queries';
 import CompTabs from '@/components/CompTabs';
+import TeamTrophies from '@/components/TeamTrophies';
 import { playerLabel } from '@/lib/labels';
 import { duration, kda, num, signed, winRate, ROLE_LABELS, ROLE_ORDER } from '@/lib/stats';
 import page from '@/components/Page.module.css';
@@ -114,6 +115,18 @@ export default async function TeamPage({ params, searchParams }) {
     : [[], new Map(), []];
   const roster = buildRoster(rosterRows, players);
 
+  // 우승·준우승: 구단이 뛴 모든 결승 (LCK + 국제대회). 월즈 선발전 결승은 우승 개념이 아니라서 제외
+  const finals = (
+    await supabase
+      .from('matches')
+      .select(MATCH_COLUMNS)
+      .eq('stage', 'Finals')
+      .eq('state', 'completed')
+      .or(`team1_id.in.(${orgIds}),team2_id.in.(${orgIds})`)
+      .order('start_time', { ascending: false })
+      .then(check)
+  ).filter((m) => !m.tournament.name.includes('Regional Finals'));
+
   return (
     <div className={`container ${page.page}`}>
       <Link href={`/teams?${new URLSearchParams({ ...compParam, ...(year && { year }) })}`} className={page.back}>
@@ -137,6 +150,8 @@ export default async function TeamPage({ params, searchParams }) {
           )}
         </div>
       </section>
+
+      <TeamTrophies finals={finals} teamIds={orgTeams.map((t) => t.id)} />
 
       {!season ? (
         <p className={page.empty}>2020년 이후 경기 기록이 없어요.</p>
