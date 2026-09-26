@@ -41,13 +41,15 @@ select
 from player_game_rows
 group by player_id, year;
 
--- 팀 연도별 통계
+-- 팀 연도별 통계 (구단 단위: 시즌 중 팀명이 바뀌어도 한 줄)
 create or replace view team_season_stats with (security_invoker = true) as
 with game_rows as (
   select
-    gt.team_id, t.year, gt.side, gt.win, gt.kills, opp.kills as deaths,
+    coalesce(tm.org_id, tm.id) as org_id, gt.team_id, t.year, g.start_time,
+    gt.side, gt.win, gt.kills, opp.kills as deaths,
     gt.towers, gt.dragons, gt.barons, gt.gold_diff_15, g.duration_sec
   from game_teams gt
+  join teams tm on tm.id = gt.team_id
   join game_teams opp on opp.game_id = gt.game_id and opp.team_id <> gt.team_id
   join games g on g.id = gt.game_id
   join matches m on m.id = g.match_id
@@ -55,7 +57,8 @@ with game_rows as (
 ),
 game_agg as (
   select
-    team_id, year,
+    org_id, year,
+    (array_agg(team_id order by start_time desc))[1] as team_id,  -- 그해 마지막으로 쓴 팀 이름
     count(*) as games,
     count(*) filter (where win) as wins,
     count(*) filter (where side = 'blue') as blue_games,
@@ -68,25 +71,32 @@ game_agg as (
     round(avg(dragons), 2) as avg_dragons,
     round(avg(barons), 2) as avg_barons
   from game_rows
-  group by team_id, year
+  group by org_id, year
 ),
 match_rows as (
-  select m.team1_id as team_id, t.year, m.winner_id = m.team1_id as win
-  from matches m join tournaments t on t.id = m.tournament_id
+  select coalesce(tm.org_id, tm.id) as org_id, t.year, m.winner_id = m.team1_id as win
+  from matches m
+  join teams tm on tm.id = m.team1_id
+  join tournaments t on t.id = m.tournament_id
   where m.state = 'completed'
   union all
-  select m.team2_id, t.year, m.winner_id = m.team2_id
-  from matches m join tournaments t on t.id = m.tournament_id
+  select coalesce(tm.org_id, tm.id), t.year, m.winner_id = m.team2_id
+  from matches m
+  join teams tm on tm.id = m.team2_id
+  join tournaments t on t.id = m.tournament_id
   where m.state = 'completed'
+),
+match_agg as (
+  select org_id, year, count(*) as matches, count(*) filter (where win) as match_wins
+  from match_rows
+  group by org_id, year
 )
 select
   ga.*,
-  count(mr.*) as matches,
-  count(mr.*) filter (where mr.win) as match_wins
+  coalesce(ma.matches, 0) as matches,
+  coalesce(ma.match_wins, 0) as match_wins
 from game_agg ga
-left join match_rows mr on mr.team_id = ga.team_id and mr.year = ga.year
-group by ga.team_id, ga.year, ga.games, ga.wins, ga.blue_games, ga.blue_wins, ga.avg_kills, ga.avg_deaths,
-  ga.avg_duration_sec, ga.avg_gold_diff_15, ga.avg_towers, ga.avg_dragons, ga.avg_barons;
+left join match_agg ma on ma.org_id = ga.org_id and ma.year = ga.year;
 
 grant select on player_game_rows, player_season_stats, team_season_stats to anon, authenticated, service_role;
 notify pgrst, 'reload schema';

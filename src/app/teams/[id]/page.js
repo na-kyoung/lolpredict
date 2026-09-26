@@ -46,18 +46,40 @@ export default async function TeamPage({ params, searchParams }) {
   const team = await getTeam((await params).id);
   if (!team) notFound();
 
-  const [seasons, previousNames] = await Promise.all([
-    supabase.from('team_season_stats').select('*').eq('team_id', team.id).order('year', { ascending: false }).then(check),
-    supabase.from('teams').select('id, name').eq('renamed_to', team.name).then(check),
+  // 같은 구단의 모든 팀 이름 (시즌 중 이름이 바뀌어도 기록을 합쳐서 보여줌)
+  const orgId = team.org_id ?? team.id;
+  const [seasons, orgTeams] = await Promise.all([
+    supabase.from('team_season_stats').select('*').eq('org_id', orgId).order('year', { ascending: false }).then(check),
+    supabase
+      .from('teams')
+      .select('id, name, short, image_url, image_url_light')
+      .or(`org_id.eq.${orgId},id.eq.${orgId},id.eq.${team.id}`)
+      .order('id')
+      .then(check),
   ]);
-  const nextTeam = team.renamed_to
-    ? check(await supabase.from('teams').select('id, name').eq('name', team.renamed_to).maybeSingle())
-    : null;
+  const orgIds = orgTeams.map((t) => t.id).join(',');
+  const nameOf = new Map(orgTeams.map((t) => [t.id, t]));
+
+  // 구단 이름 기록은 각 이름의 첫 경기 순서로 (BRION → Fredit BRION → ...)
+  const orgMatches = await fetchAll(() =>
+    supabase
+      .from('matches')
+      .select('start_time, team1_id, team2_id')
+      .or(`team1_id.in.(${orgIds}),team2_id.in.(${orgIds})`)
+      .order('start_time'),
+  );
+  const firstSeen = new Map();
+  for (const m of orgMatches) {
+    for (const id of [m.team1_id, m.team2_id]) if (nameOf.has(id) && !firstSeen.has(id)) firstSeen.set(id, m.start_time);
+  }
+  orgTeams.sort((a, b) => (firstSeen.get(a.id) ?? '9').localeCompare(firstSeen.get(b.id) ?? '9'));
 
   const years = seasons.map((s) => s.year);
   const { year: yearParam } = await searchParams;
   const year = years.includes(Number(yearParam)) ? Number(yearParam) : years[0];
   const season = seasons.find((s) => s.year === year);
+  // 그해 마지막으로 쓴 이름·로고로 표시
+  const shown = (season && nameOf.get(season.team_id)) || team;
 
   const [rosterRows, players, matches] = year
     ? await Promise.all([
@@ -65,7 +87,7 @@ export default async function TeamPage({ params, searchParams }) {
           supabase
             .from('player_game_rows')
             .select('player_id, role, win, kills, deaths, assists')
-            .eq('team_id', team.id)
+            .in('team_id', orgTeams.map((t) => t.id))
             .eq('year', year),
         ),
         getPlayerMap(),
@@ -74,7 +96,7 @@ export default async function TeamPage({ params, searchParams }) {
             .from('matches')
             .select(MATCH_COLUMNS)
             .in('tournament_id', ids)
-            .or(`team1_id.eq.${team.id},team2_id.eq.${team.id}`)
+            .or(`team1_id.in.(${orgIds}),team2_id.in.(${orgIds})`)
             .order('start_time', { ascending: false })
             .then(check),
         ),
@@ -89,28 +111,18 @@ export default async function TeamPage({ params, searchParams }) {
       </Link>
 
       <section className={page.profile}>
-        <TeamLogo team={team} size={72} />
+        <TeamLogo team={shown} size={72} />
         <div>
-          <h1>{team.name}</h1>
-          {(previousNames.length > 0 || nextTeam) && (
+          <h1>{shown.name}</h1>
+          {orgTeams.length > 1 && (
             <p>
-              {previousNames.length > 0 && (
-                <>
-                  이전 이름:{' '}
-                  {previousNames.map((p, i) => (
-                    <span key={p.id}>
-                      {i > 0 && ', '}
-                      <Link href={`/teams/${p.id}`}>{p.name}</Link>
-                    </span>
-                  ))}
-                </>
-              )}
-              {previousNames.length > 0 && nextTeam && ' · '}
-              {nextTeam && (
-                <>
-                  현재 이름: <Link href={`/teams/${nextTeam.id}`}>{nextTeam.name}</Link>
-                </>
-              )}
+              구단 이름 기록:{' '}
+              {orgTeams.map((t, i) => (
+                <span key={t.id}>
+                  {i > 0 && ' → '}
+                  {t.id === shown.id ? <b>{t.name}</b> : <Link href={`/teams/${t.id}`}>{t.name}</Link>}
+                </span>
+              ))}
             </p>
           )}
         </div>
@@ -209,6 +221,7 @@ export default async function TeamPage({ params, searchParams }) {
                 <thead>
                   <tr>
                     <th className={t.left}>연도</th>
+                    <th className={t.left}>팀명</th>
                     <th>매치</th>
                     <th>세트</th>
                     <th>세트 승률</th>
@@ -224,6 +237,7 @@ export default async function TeamPage({ params, searchParams }) {
                           {s.year}
                         </Link>
                       </td>
+                      <td className={`${t.left} ${t.muted}`}>{nameOf.get(s.team_id)?.name}</td>
                       <td>
                         {s.match_wins}승 {s.matches - s.match_wins}패
                       </td>

@@ -94,6 +94,29 @@ async function saveTeams(names) {
   return idMap('teams', 'name');
 }
 
+// 구단 id 채우기: 팀 계보(renamed_to)를 끝까지 따라간 가장 최근 팀의 id
+// 시즌 중 이름이 바뀐 구단(BRION → HANJIN BRION 등)을 통계에서 한 줄로 묶는 데 사용
+async function assignOrgs() {
+  const { data: teams, error } = await db.from('teams').select('id,name,renamed_to,org_id');
+  if (error) throw new Error(error.message);
+  const byName = new Map(teams.map((t) => [t.name, t]));
+  const latest = (t, seen = new Set()) => {
+    const next = byName.get(t.renamed_to);
+    if (!next || seen.has(next.id)) return t;
+    seen.add(t.id);
+    return latest(next, seen);
+  };
+  let changed = 0;
+  for (const t of teams) {
+    const orgId = latest(t).id;
+    if (t.org_id === orgId) continue;
+    const { error: updateError } = await db.from('teams').update({ org_id: orgId }).eq('id', t.id);
+    if (updateError) throw new Error(updateError.message);
+    changed++;
+  }
+  if (changed) console.log(`  구단 연결 ${changed}개 팀`);
+}
+
 async function getTournamentInfo(since) {
   const rows = await cargoQuery({
     tables: 'Tournaments',
@@ -218,6 +241,7 @@ async function collectRange(from, to, tourInfo) {
   for (const g of gameRows) teamNames.add(g.team1).add(g.team2);
   teamNames.delete('');
   const teamIds = await saveTeams(teamNames);
+  await assignOrgs();
 
   // 6. 매치 저장
   console.log('매치 저장 중...');
