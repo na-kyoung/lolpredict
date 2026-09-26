@@ -1,6 +1,5 @@
 import Link from 'next/link';
 import { tournamentLabel } from '@/lib/labels';
-import page from './Page.module.css';
 import styles from './TeamTrophies.module.css';
 
 // 구단의 우승·준우승 기록 (LCK + 국제대회). finals: 이 구단이 뛴 결승 매치 (최신순)
@@ -23,14 +22,18 @@ export default function TeamTrophies({ finals, teamIds }) {
   if (!records.length) return null;
   const wins = records.filter((r) => r.won).length;
 
+  // 목록이 길어서 기본은 접어 두고, 버튼(summary)을 누르면 펼침 (<details> 라 JS 불필요)
   return (
-    <section className={page.section}>
-      <h2 className={page.sectionTitle}>
-        우승 기록{' '}
-        <small className={styles.summary}>
+    <details className={styles.details}>
+      <summary className={styles.toggle}>
+        <span className={styles.toggleTitle}>우승 기록</span>
+        <span className={styles.summary}>
           <b>우승 {wins}회</b> · 준우승 {records.length - wins}회
-        </small>
-      </h2>
+        </span>
+        <span className={styles.arrow} aria-hidden="true">
+          ▾
+        </span>
+      </summary>
       <ul className={styles.list}>
         {records.map((r) => (
           <li key={r.match.id}>
@@ -45,6 +48,6 @@ export default function TeamTrophies({ finals, teamIds }) {
           </li>
         ))}
       </ul>
-    </section>
+    </details>
   );
 }

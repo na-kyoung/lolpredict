@@ -1,5 +1,35 @@
+/* 펼치기/접기 버튼 */
+.details {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  cursor: pointer;
+  list-style: none; /* 브라우저 기본 삼각형 숨김 */
+  user-select: none;
+}
+
+.toggle::-webkit-details-marker {
+  display: none;
+}
+
+.toggle:hover {
+  background: var(--surface-hover);
+}
+
+.toggleTitle {
+  font-size: 16px;
+  font-weight: 800;
+}
+
 .summary {
-  margin-left: 6px;
   font-size: 14px;
   font-weight: 600;
   color: var(--text-muted);
@@ -9,12 +39,19 @@
   color: var(--accent);
 }
 
+.arrow {
+  margin-left: auto;
+  color: var(--text-muted);
+  transition: transform 0.2s;
+}
+
+.details[open] .arrow {
+  transform: rotate(180deg);
+}
+
 .list {
   list-style: none;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  overflow: hidden;
+  border-top: 1px solid var(--border);
 }
 
 .list li + li {
