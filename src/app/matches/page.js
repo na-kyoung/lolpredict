@@ -2,6 +2,7 @@ import Link from 'next/link';
 import MatchList from '@/components/MatchList';
 import CompTabs from '@/components/CompTabs';
 import NoData from '@/components/NoData';
+import TournamentWinner from '@/components/TournamentWinner';
 import { supabase, MATCH_COLUMNS } from '@/lib/supabase';
 import { pickComp } from '@/lib/queries';
 import { tournamentLabel } from '@/lib/labels';
@@ -36,8 +37,22 @@ export default async function MatchesPage({ searchParams }) {
     .from('matches')
     .select(MATCH_COLUMNS)
     .eq('tournament_id', selected.id)
-    .order('start_time', { ascending: true });
+    .order('start_time', { ascending: false }); // 최신순 (결승이 맨 위)
   if (matchError) throw new Error(matchError.message);
+
+  // 2025~ 정규시즌 3라운드 이후 대회면, 순위 합산용으로 같은 해 1-2라운드 매치도 조회
+  let earlierRounds = [];
+  const earlierIds = /Rounds [3-9]/.test(selected.name)
+    ? yearTournaments.filter((t) => /Rounds 1-2/.test(t.name)).map((t) => t.id)
+    : [];
+  if (earlierIds.length) {
+    const { data, error: roundsError } = await supabase
+      .from('matches')
+      .select(MATCH_COLUMNS)
+      .in('tournament_id', earlierIds);
+    if (roundsError) throw new Error(roundsError.message);
+    earlierRounds = data;
+  }
 
   const q = (extra) => `/matches?${new URLSearchParams({ ...(comp === 'intl' && { comp }), ...extra })}`;
 
@@ -64,6 +79,8 @@ export default async function MatchesPage({ searchParams }) {
           </Link>
         ))}
       </nav>
+
+      <TournamentWinner tournament={selected} matches={matches} earlierRounds={earlierRounds} />
 
       {matches.length ? (
         <MatchList matches={matches} />
